@@ -123,11 +123,15 @@ def batch_query_thread(domains):
     t.daemon = True
     t.start()
 
+def path(filename):
+    application_path = os.path.dirname(os.path.realpath(__file__))    
+    return os.path.join(application_path, filename)
+
 class App:
     def __init__(self, master):
         self.master = master
         self.master.title("Hostip")
-        # self.master.iconbitmap("icon.ico")
+        self.master.iconbitmap(path('icon.ico'))
         self.master.geometry("800x600")
         self.master.minsize(800, 600)
         # self.master.resizable(False, False)
