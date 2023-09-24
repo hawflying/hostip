@@ -8,6 +8,7 @@ import datetime
 import re
 import os
 import subprocess
+from tkinter import Menu
 
 default_input = """github.com
 github.io
@@ -65,7 +66,31 @@ def is_valid_ip_domain(ip_domain):
     ipdomain = ip_domain.split()
     return len(ipdomain) == 2 and is_valid_ip(ipdomain[0]) and is_valid_domain(ipdomain[1])
 
-def batch_query_domain_ips(domains):    
+
+def query_domain_ip(domain):
+    url = f"https://ip.chinaz.com/{domain}"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    span_all = soup.find_all("span", class_="Whwtdhalf w15-0 lh45")
+    if span_all:
+        return span_all[1].text
+    return None
+
+def multiple_query_domain_ips(domains):
+    domain_ips = {}
+    try:
+        for domain in domains:
+            ip_address = query_domain_ip(domain)
+            if ip_address:
+                domain_ips[domain] = ip_address
+    except Exception as e:
+        app.update_status_bar(f'出错了。{e.args}')
+        messagebox.showerror("错误", e.args)
+    return domain_ips
+
+def batch_query_domain_ips(domains):
+    # return multiple_query_domain_ips(domains)
+    
     url = "https://ip.tool.chinaz.com/ipbatch"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
@@ -153,6 +178,7 @@ class App:
         text_domains.grid(row=1, column=0, columnspan=3, padx=0, pady=0, sticky=tk.NSEW)
         text_domains.bind("<<Modified>>", self.on_text_domains_changed)
         text_domains.bind("<KeyRelease>", self.on_text_domains_changed)
+        text_domains.bind("<<Selection>>", self.on_text_selected)
         text_domains.see(tk.END)
         scrollbar_domains = tk.Scrollbar(frame, command=text_domains.yview)
         scrollbar_domains.grid(row=1, column=3, padx=(0,10), sticky=tk.NS)
@@ -185,6 +211,17 @@ class App:
         button_open_host = ttk.Button(frame, text="打开Hosts", command=self.on_open_host_click)
         button_open_host.grid(row=2, column=6, padx=10, pady=10, sticky=tk.E)
 
+        menu = tk.Menu(frame, tearoff=0)
+        menu.add_command(label="撤销", command=self.undo)
+        menu.add_command(label="恢复", command=self.redo)
+        menu.add_separator()
+        menu.add_command(label="剪切", command=self.cut, state=tk.DISABLED)
+        menu.add_command(label="复制", command=self.copy, state=tk.DISABLED)
+        menu.add_command(label="粘贴", command=self.paste)
+        menu.add_command(label="删除", command=self.delete, state=tk.DISABLED)
+        menu.add_separator()
+        menu.add_command(label="全选", command=self.select_all)
+        text_domains.bind("<Button-3>", lambda event: menu.post(event.x_root, event.y_root))
 
         frame.grid_rowconfigure(1, weight=1)
         frame.columnconfigure(0, weight=1)
@@ -203,6 +240,7 @@ class App:
         self.text_ips = text_ips
         self.label_ip_domains = label_ip_domains
         self.status_bar = status_bar
+        self.menu = menu
 
     def highlight_text(self, text_widget, start_index, end_index):
         text_widget.tag_add("highlight", start_index, end_index)
@@ -261,7 +299,7 @@ class App:
     def on_reset_click(self):
         self.text_domains.delete(1.0, tk.END)
         self.text_domains.insert(1.0, default_input)
-        self.on_text_domains_changed(None)
+        self.text_domains.event_generate("<<Modified>>")
 
     def on_query_click(self):
         status_bar_text = self.status_bar.cget('text')
@@ -310,6 +348,51 @@ class App:
     def update_status_bar(self, text):
         self.status_bar.config(text=text)
     
+    def undo(self):
+        try:
+            self.text_domains.edit_undo()
+            self.menu.entryconfig("恢复", state=tk.NORMAL)
+            self.text_domains.event_generate("<<Modified>>")
+        except tk.TclError:
+            self.menu.entryconfig("撤销", state=tk.DISABLED)
+
+    def redo(self):
+        try:
+            self.text_domains.edit_redo()
+            self.menu.entryconfig("撤销", state=tk.NORMAL)
+            self.text_domains.event_generate("<<Modified>>")
+        except tk.TclError:
+            self.menu.entryconfig("恢复", state=tk.DISABLED)
+
+    def cut(self):
+        if self.text_domains.tag_ranges("sel"):
+            self.text_domains.event_generate("<<Cut>>")
+            self.text_domains.event_generate("<<Modified>>")
+
+    def copy(self):
+        self.text_domains.event_generate("<<Copy>>")
+
+    def paste(self):
+        self.text_domains.event_generate("<<Paste>>")
+        self.text_domains.event_generate("<<Modified>>")
+
+    def delete(self):
+        if self.text_domains.tag_ranges("sel"):
+            self.text_domains.delete(tk.SEL_FIRST, tk.SEL_LAST)
+            self.text_domains.event_generate("<<Modified>>")
+
+    def select_all(self):
+        self.text_domains.tag_add(tk.SEL, "1.0", tk.END)
+    
+    def on_text_selected(self, event):
+        if self.text_domains.tag_ranges("sel"):
+            self.menu.entryconfig("剪切", state=tk.NORMAL)
+            self.menu.entryconfig("复制", state=tk.NORMAL)
+            self.menu.entryconfig("删除", state=tk.NORMAL)
+        else:
+            self.menu.entryconfig("剪切", state=tk.DISABLED)
+            self.menu.entryconfig("复制", state=tk.DISABLED)
+            self.menu.entryconfig("删除", state=tk.DISABLED)
 
 root = tk.Tk()
 app = App(root)
