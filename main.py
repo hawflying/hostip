@@ -101,17 +101,17 @@ class App:
 
     def create_input_menu_section(self, frame):
         # 创建文本域的右键菜单
-        self.menu = tk.Menu(frame, tearoff=0)
-        self.menu.add_command(label="撤销", command=self.undo)
-        self.menu.add_command(label="恢复", command=self.redo)
-        self.menu.add_separator()
-        self.menu.add_command(label="剪切", command=self.cut, state=tk.DISABLED)
-        self.menu.add_command(label="复制", command=self.copy, state=tk.DISABLED)
-        self.menu.add_command(label="粘贴", command=self.paste)
-        self.menu.add_command(label="删除", command=self.delete, state=tk.DISABLED)
-        self.menu.add_separator()
-        self.menu.add_command(label="全选", command=self.select_all)
-        self.text_domains.bind("<Button-3>", lambda event: self.menu.post(event.x_root, event.y_root))
+        self.context_menu = tk.Menu(frame, tearoff=0)
+        self.context_menu.add_command(label="撤销", command=self.undo)
+        self.context_menu.add_command(label="恢复", command=self.redo)
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label="剪切", command=self.cut, state=tk.DISABLED)
+        self.context_menu.add_command(label="复制", command=self.copy, state=tk.DISABLED)
+        self.context_menu.add_command(label="粘贴", command=self.paste)
+        self.context_menu.add_command(label="删除", command=self.delete, state=tk.DISABLED)
+        self.context_menu.add_separator()
+        self.context_menu.add_command(label="全选", command=self.select_all)
+        self.text_domains.bind("<Button-3>", self.show_context_menu)
 
     def create_status_section(self):
         # 创建状态栏
@@ -256,23 +256,57 @@ class App:
                 end_index = f'{i + 1}.{len(line)}'
                 self.highlight_text(self.text_ips, start_index, end_index)
 
+    def show_context_menu(self, event):
+        # 更新撤销和恢复按钮状态
+        self.update_undo_redo_buttons()
+        # 弹出右键菜单
+        self.context_menu.post(event.x_root, event.y_root)
+
+    def update_undo_redo_buttons(self):
+        # 更新撤销和恢复按钮状态
+        if self.is_undoable():
+            self.context_menu.entryconfig("撤销", state=tk.NORMAL)
+        else:
+            self.context_menu.entryconfig("撤销", state=tk.DISABLED)
+
+        if self.is_redoable():
+            self.context_menu.entryconfig("恢复", state=tk.NORMAL)
+        else:
+            self.context_menu.entryconfig("恢复", state=tk.DISABLED)
+
+    def is_undoable(self):
+        # 判断是否可撤销
+        try:
+            self.text_domains.edit_undo()
+            self.text_domains.edit_redo()
+            return True
+        except tk.TclError:
+            return False
+
+    def is_redoable(self):
+        # 判断是否可恢复
+        try:
+            self.text_domains.edit_redo()
+            self.text_domains.edit_undo()
+            return True
+        except tk.TclError:
+            return False
+
     def undo(self):
         # 执行撤销操作
         try:
             self.text_domains.edit_undo()
-            self.menu.entryconfig("恢复", state=tk.NORMAL)
             self.text_domains.event_generate("<<Modified>>")
         except tk.TclError:
-            self.menu.entryconfig("撤销", state=tk.DISABLED)
+            pass
 
     def redo(self):
         # 执行恢复操作
         try:
             self.text_domains.edit_redo()
-            self.menu.entryconfig("撤销", state=tk.NORMAL)
             self.text_domains.event_generate("<<Modified>>")
         except tk.TclError:
-            self.menu.entryconfig("恢复", state=tk.DISABLED)
+            pass
 
     def cut(self):
         # 执行剪切操作
@@ -302,13 +336,13 @@ class App:
     def on_text_selected(self, event):
         # 处理文本选择事件，根据选择状态更新菜单项的可用性
         if self.text_domains.tag_ranges("sel"):
-            self.menu.entryconfig("剪切", state=tk.NORMAL)
-            self.menu.entryconfig("复制", state=tk.NORMAL)
-            self.menu.entryconfig("删除", state=tk.NORMAL)
+            self.context_menu.entryconfig("剪切", state=tk.NORMAL)
+            self.context_menu.entryconfig("复制", state=tk.NORMAL)
+            self.context_menu.entryconfig("删除", state=tk.NORMAL)
         else:
-            self.menu.entryconfig("剪切", state=tk.DISABLED)
-            self.menu.entryconfig("复制", state=tk.DISABLED)
-            self.menu.entryconfig("删除", state=tk.DISABLED)
+            self.context_menu.entryconfig("剪切", state=tk.DISABLED)
+            self.context_menu.entryconfig("复制", state=tk.DISABLED)
+            self.context_menu.entryconfig("删除", state=tk.DISABLED)
 
 def main():
     root = tk.Tk()
