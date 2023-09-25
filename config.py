@@ -1,4 +1,8 @@
-DEFAULT_INPUT = """github.com
+import os
+import configparser
+
+# 默认配置，输入域名
+DEFAULT_INPUT_DOMAINS = """github.com
 github.io
 github.blog
 github.community
@@ -38,6 +42,33 @@ github.map.fastly.net
 github.global.ssl.fastly.net
 vscode.dev
 api.funcaptcha.com"""
+# 默认配置，支持的最大域名数量
+MAX_DOMAIN_COUNT = 300
 
-# 最多支持300个域名批量查询
-MAX_DOMAINS = 300
+# 配置文件名称和部分名称
+CONFIG_FILE = 'config.ini'
+CONFIG_SECTION = 'General'
+
+class Config:
+    def __init__(self):
+        self._default_input_domains, self._max_domain_count = self._read_config()
+
+    @property
+    def default_input_domains(self):
+        return self._default_input_domains
+    
+    @property
+    def max_domain_count(self):
+        return self._max_domain_count
+
+    def _read_config(self):
+        config = configparser.ConfigParser()
+
+        if os.path.exists(CONFIG_FILE):
+            config.read(CONFIG_FILE, encoding='utf-8')
+
+        # 从配置文件中读取值
+        default_input_domains = config.get(CONFIG_SECTION, 'default_input_domains', fallback=DEFAULT_INPUT_DOMAINS)
+        max_domain_count = config.getint(CONFIG_SECTION, 'max_domain_count', fallback=MAX_DOMAIN_COUNT)
+
+        return default_input_domains, max_domain_count

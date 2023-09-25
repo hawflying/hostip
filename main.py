@@ -1,7 +1,7 @@
 import datetime
 import tkinter as tk
 from tkinter import Menu, messagebox, ttk
-import config
+from config import Config
 import utils
 from querythread import QueryThread
 
@@ -14,6 +14,9 @@ class App:
         self.master.geometry("800x600")
         self.master.minsize(800, 600)
         self.is_querying = False
+        
+        # 读取配置文件，如果不存在则使用默认值
+        self.config = Config()
 
         # 初始化应用界面
         self.init_widgets()
@@ -40,12 +43,12 @@ class App:
 
     def create_input_section(self, frame):
         # 创建输入域名的标签
-        label_input = ttk.Label(frame, text=f"批量输入域名，每行输入一个，最多支持{config.MAX_DOMAINS}个域名批量查询")
+        label_input = ttk.Label(frame, text=f"批量输入域名，每行输入一个，最多支持{self.config.max_domain_count}个域名批量查询")
         label_input.grid(row=0, column=0, columnspan=3, sticky=tk.W)
 
         # 创建输入域名的文本框
         self.text_domains = tk.Text(frame, wrap=None, undo=True)
-        self.text_domains.insert(1.0, config.DEFAULT_INPUT)
+        self.text_domains.insert(1.0, self.config.default_input_domains)
         self.text_domains.grid(row=1, column=0, columnspan=3, sticky=tk.NSEW)
         self.text_domains.bind("<<Modified>>", self.on_text_domains_changed)
         self.text_domains.bind("<KeyRelease>", self.on_text_domains_changed)
@@ -136,7 +139,7 @@ class App:
             label_text += f'（{invalid_domains_count} 个域名无效）'
             self.highlight_invalid_domains(domains)
         self.label_domains.config(text=label_text)
-        if valid_domains and len(valid_domains) <= config.MAX_DOMAINS:
+        if valid_domains and len(valid_domains) <= self.config.max_domain_count:
             self.button_query.config(state=tk.NORMAL)
         else:
             self.button_query.config(state=tk.DISABLED)
@@ -165,7 +168,7 @@ class App:
     def on_reset_click(self):
         # 处理重置按钮点击事件
         self.text_domains.delete(1.0, tk.END)
-        self.text_domains.insert(1.0, config.DEFAULT_INPUT)
+        self.text_domains.insert(1.0, self.config.default_input_domains)
         self.text_domains.event_generate("<<Modified>>")
 
     def on_query_click(self):
