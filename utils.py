@@ -22,8 +22,23 @@ def is_valid_ip_domain(ip_domain):
     ipdomain = ip_domain.split()
     return len(ipdomain) == 2 and is_valid_ip(ipdomain[0]) and is_valid_domain(ipdomain[1])
 
+def get_hosts_file_path():
+    system = platform.system()
+    if system == "Windows":
+        # Windows系统下的hosts文件路径
+        return os.path.join(os.path.expandvars("%SystemRoot%"), 'system32', 'drivers', 'etc', 'hosts')
+    elif system == "Darwin" or system == "Linux":
+        # macOS和Linux系统下的hosts文件路径
+        return '/etc/hosts'
+    else:
+        # 不支持的操作系统
+        return None
+
 def update_hosts_file(host_context):
-    hosts_path = os.path.join(os.path.expandvars("%SystemRoot%"), 'system32', 'drivers', 'etc', 'hosts')
+    hosts_path = get_hosts_file_path()
+    if not hosts_path:
+        return
+
     with open(hosts_path, 'r') as f:
         old_content = f.read()
 
@@ -40,7 +55,10 @@ def update_hosts_file(host_context):
     refresh_dns_cache()
 
 def open_hosts_file():
-    subprocess.Popen(['notepad', os.path.join(os.path.expandvars("%SystemRoot%"), 'system32', 'drivers', 'etc', 'hosts')], shell=True)
+    hosts_path = get_hosts_file_path()
+    if not hosts_path:
+        return
+    subprocess.Popen(['notepad', hosts_path], shell=True)
 
 def refresh_dns_cache():
     # 刷新 DNS 缓存
