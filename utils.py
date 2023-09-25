@@ -1,6 +1,7 @@
 import re
 import os
 import subprocess
+import platform
 
 def path(filename):
     application_path = os.path.dirname(os.path.realpath(__file__))    
@@ -34,6 +35,26 @@ def update_hosts_file(host_context):
 
     with open(hosts_path, 'w') as f:
         f.write(new_content)
+    
+    # 刷新 DNS 缓存
+    refresh_dns_cache()
 
 def open_hosts_file():
     subprocess.Popen(['notepad', os.path.join(os.path.expandvars("%SystemRoot%"), 'system32', 'drivers', 'etc', 'hosts')], shell=True)
+
+def refresh_dns_cache():
+    # 刷新 DNS 缓存
+    system = platform.system()
+
+    if system == "Windows":
+        # 刷新DNS缓存命令（Windows）
+        subprocess.run(["ipconfig", "/flushdns"], text=True, check=True)
+    elif system == "Darwin" or system == "Linux":
+        # 刷新DNS缓存命令（macOS和Linux）
+        subprocess.run(["sudo", "systemd-resolve", "--flush-caches"], text=True, check=True)
+        # 如果你的系统不使用systemd-resolve，则可以使用以下命令（具体命令可能因Linux发行版而异）：
+        # subprocess.run(["sudo", "/etc/init.d/nscd", "restart"], text=True, check=True)
+        # 或
+        # subprocess.run(["sudo", "service", "dnsmasq", "restart"], text=True, check=True)
+    else:
+        print("Unsupported operating system")
