@@ -257,8 +257,16 @@ class App:
                 self.highlight_text(self.text_ips, start_index, end_index)
 
     def show_context_menu(self, event):
+        # 保存选中的文本范围
+        sel_ranges = self.text_domains.tag_ranges("sel")
+
         # 更新撤销和恢复按钮状态
         self.update_undo_redo_buttons()
+
+        # 恢复选中的文本范围
+        for start, end in zip(sel_ranges[::2], sel_ranges[1::2]):
+            self.text_domains.tag_add(tk.SEL, start, end)
+
         # 弹出右键菜单
         self.context_menu.post(event.x_root, event.y_root)
 
