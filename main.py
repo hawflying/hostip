@@ -1,9 +1,9 @@
 import datetime
 import tkinter as tk
 from tkinter import Menu, messagebox, ttk
-from config import Config
+from config import Config, __version__
+from thread import QueryThread
 import utils
-from querythread import QueryThread
 
 class App:
     def __init__(self, master):
@@ -11,8 +11,8 @@ class App:
         self.master = master
         self.master.title("Hostip")
         self.master.iconbitmap(utils.path('icon.ico'))
-        self.master.geometry("800x600")
-        self.master.minsize(800, 600)
+        self.master.geometry("820x600")
+        self.master.minsize(820, 600)
         self.is_querying = False
         
         # 读取配置文件，如果不存在则使用默认值
@@ -81,6 +81,7 @@ class App:
         self.text_ips.grid(row=1, column=4, columnspan=3, padx=(10,0), sticky=tk.NSEW)
         self.text_ips.bind("<<Modified>>", self.on_text_ips_changed)
         self.text_ips.bind("<KeyRelease>", self.on_text_ips_changed)
+        self.text_ips.config(tabs=(150,))
 
         # 创建查询结果文本框的滚动条
         scrollbar_ips = tk.Scrollbar(frame, command=self.text_ips.yview)
@@ -117,6 +118,9 @@ class App:
         # 创建状态栏
         self.status_bar = tk.Label(self.master, text="就绪", bd=00, relief=tk.SUNKEN, anchor=tk.W)
         self.status_bar.grid(row=1, column=0, padx=10, pady=(0,3), sticky="ew")
+        # 版本号
+        version_label = tk.Label(self.master, text=f'版本号: {__version__}', anchor=tk.E)
+        version_label.grid(row=1, column=0, padx=10, pady=(0,3), sticky="e")
 
     def get_domains(self):
         # 获取输入的域名列表
@@ -150,10 +154,7 @@ class App:
         line_ips = self.text_ips.get(1.0, tk.END).strip().splitlines()
         ip_domains = [ip.strip() for ip in line_ips if ip.strip() and not ip.startswith('#')]
         # 过滤掉非法IP-域名
-        valid_ip_domains = []
-        for ip_domain in ip_domains:
-            if utils.is_valid_ip_domain(ip_domain):
-                valid_ip_domains.append(ip_domain)
+        valid_ip_domains = [ip_domain for ip_domain in ip_domains if utils.is_valid_ip_domain(ip_domain)]
         invalid_ip_domains_count = len(ip_domains) - len(valid_ip_domains)
         label_text = f'{len(ip_domains)} 个IP-域名'
         if invalid_ip_domains_count:
@@ -194,7 +195,7 @@ class App:
         if domain_ips:
             ips_domains = []
             for domain, ip_address in domain_ips.items():
-                ips_domains.append(f"{ip_address}\t\t{domain}")
+                ips_domains.append(f"{ip_address}\t{domain}")
             host_ips = "\r\n".join(ips_domains)
 
             host_context = f"""# Hostip Host Start
@@ -208,6 +209,11 @@ class App:
         self.text_ips_insert(host_context)
         usedTime = current_time - self.start_time
         self.update_status_bar(f"查询用时 {usedTime.total_seconds()} 秒")
+
+    def on_query_exception_callback(self, error_message):
+        self.is_querying = False
+        self.update_status_bar(error_message)
+        messagebox.showerror("错误", error_message)
 
     def text_ips_insert(self, context):
         # 插入查询结果到文本框
