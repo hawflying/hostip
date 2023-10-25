@@ -4,6 +4,7 @@ from tkinter import Menu, messagebox, ttk
 from config import Config, __version__
 from thread import QueryThread
 import utils
+import cli
 
 class App:
     def __init__(self, master):
@@ -193,9 +194,7 @@ class App:
         self.is_querying = False
         current_time = datetime.datetime.now()
         if domain_ips:
-            ips_domains = []
-            for domain, ip_address in domain_ips.items():
-                ips_domains.append(f"{ip_address}\t{domain}")
+            ips_domains = [f"{ip_address}\t{domain}" for domain, ip_address in domain_ips.items()]
             host_ips = "\r\n".join(ips_domains)
 
             host_context = f"""# Hostip Host Start
@@ -224,8 +223,8 @@ class App:
 
     def on_update_host_click(self):
         # 处理更新Hosts按钮点击事件
-        answeryes = messagebox.askyesno("确认", "你确定要执行此操作吗？")
-        if answeryes:
+        answer_yes = messagebox.askyesno("确认", "你确定要执行此操作吗？")
+        if answer_yes:
             host_context = self.text_ips.get(1.0, tk.END).strip()
 
             self.update_status_bar('正在更新Hosts……')
@@ -364,7 +363,8 @@ def main():
     root.mainloop()
 
 if __name__ == '__main__':
-    main()
+    if cli.main(True):
+        main()
 
 # 执行这个命令生成exe文件
 # pyinstaller -F main.py -n Hostip --add-data 'icon.ico;.' -i icon.ico -w
